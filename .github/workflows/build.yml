@@ -15,28 +15,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Fix Java and Kotlin version
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path("extracted/KianEmojiPrototype/app/build.gradle.kts")
-          s = p.read_text()
-          if "compileOptions" not in s:
-              s = s.replace(
-                  "android {\n",
-                  """android {
-              compileOptions {
-                  sourceCompatibility = JavaVersion.VERSION_17
-                  targetCompatibility = JavaVersion.VERSION_17
-              }
-              kotlinOptions {
-                  jvmTarget = "17"
-              }
-          """,
-                  1
-              )
-          p.write_text(s)
-          PY
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -45,10 +24,54 @@ jobs:
 
       - name: Extract project ZIP
         run: |
-          mkdir extracted
-          unzip -q *.zip -d extracted
+          mkdir -p extracted
+          unzip -q KIAN_EMOJI_Prototype_Source.zip -d extracted
 
-      - name: Build APK
+      - name: Fix Java and Kotlin version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path("extracted/KianEmojiPrototype/app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit(f"Gradle file not found: {p}")
+
+          s = p.read_text()
+
+          if "compileOptions" not in s:
+              s = s.replace(
+                  "android {",
+                  """android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+          """,
+                  1
+              )
+
+          if "kotlinOptions" not in s:
+              s = s.replace(
+                  "android {",
+                  """android {
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          """,
+                  1
+              )
+          elif 'jvmTarget = "17"' not in s:
+              import re
+              s = re.sub(
+                  r'jvmTarget\s*=\s*"[^"]+"',
+                  'jvmTarget = "17"',
+                  s
+              )
+
+          p.write_text(s)
+          PY
+
+      - name: Prepare Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
