@@ -1,3 +1,4 @@
+
 name: Build KIAN EMOJI APK
 
 on:
@@ -11,27 +12,39 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Extract project ZIP
         run: |
           mkdir -p extracted
           unzip -q KIAN_EMOJI_Prototype_Source_v2.zip -d extracted
+
+      - name: Apply KIAN EMOJI source patches
+        run: |
+          cp -r patches/app/src/main/java/com/kianclub/kianemoji \
+            extracted/KianEmojiPrototype/app/src/main/java/com/kianclub/
+
       - name: Fix Java and Kotlin version
         run: |
           python - <<'PY'
           from pathlib import Path
           import re
+
           p = Path("extracted/KianEmojiPrototype/app/build.gradle.kts")
           if not p.exists():
               raise SystemExit(f"Gradle file not found: {p}")
+
           s = p.read_text()
+
           if "compileOptions" not in s:
               s = s.replace("android {", """android {
               compileOptions {
@@ -39,6 +52,7 @@ jobs:
                   targetCompatibility = JavaVersion.VERSION_17
               }
           """, 1)
+
           if "kotlinOptions" not in s:
               s = s.replace("android {", """android {
               kotlinOptions {
@@ -46,17 +60,25 @@ jobs:
               }
           """, 1)
           elif 'jvmTarget = "17"' not in s:
-              s = re.sub(r'jvmTarget\s*=\s*"[^"]+"', 'jvmTarget = "17"', s)
+              s = re.sub(
+                  r'jvmTarget\s*=\s*"[^"]+"',
+                  'jvmTarget = "17"',
+                  s
+              )
+
           p.write_text(s)
           PY
+
       - name: Prepare Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+
       - name: Compile Android app
         run: |
           cd extracted/KianEmojiPrototype
           gradle :app:assembleDebug
+
       - name: Save APK
         uses: actions/upload-artifact@v4
         with:
