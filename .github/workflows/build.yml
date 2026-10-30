@@ -15,7 +15,28 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
+      - name: Fix Java and Kotlin version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("extracted/KianEmojiPrototype/app/build.gradle.kts")
+          s = p.read_text()
+          if "compileOptions" not in s:
+              s = s.replace(
+                  "android {\n",
+                  """android {
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          """,
+                  1
+              )
+          p.write_text(s)
+          PY
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
